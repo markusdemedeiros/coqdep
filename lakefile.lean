@@ -2,7 +2,7 @@ import Lake
 open Lake DSL
 
 package «coqdep» where
-  -- add package configuration options here
+   -- add package configuration options here
 
 @[default_target]
 lean_exe «coqdep» where
