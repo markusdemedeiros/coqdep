@@ -1,25 +1,3 @@
--- #check IO.FS.Handle.getLine
-
--- inductive RocqFileType
--- | v
--- | vo
--- | vio
---   deriving Repr, Inhabited
-
--- instance : ToString RocqFileType where
---   toString f :=
---     match f with
---     | RocqFileType.v => "v"
---     | RocqFileType.vo => "vo"
---     | RocqFileType.vio => "vio"
-
--- def parseRocqFileType : String -> Option RocqFileType
--- | "v"  => some RocqFileType.v
--- | "vo"  => some RocqFileType.vo
--- | "vio"  => some RocqFileType.vio
--- | _ => none
-
-
 import Lean.Data.HashMap
 import Lean.Data.HashSet
 
@@ -65,10 +43,6 @@ def show_path (x : List String) : String :=
 -- String representation of a ndoe
 def show_node (x : RocqFile) : String := s!"{x.2}.{x.3}"
 
---
--- def depgraph.from_vo (d : RocqFile × RocqFile) : Bool := d.1.type == "vo"
--- def depgraph.to_vo (d : RocqFile × RocqFile) : Bool := d.2.type == "vo"
-
 def DepGraph.nodes (d : DepGraph) : Lean.HashSet RocqFile :=
   let all_nodes := d.toList.map (fun x => x.1) ++ d.toList.map (fun x => x.2)
   Lean.HashSet.insertMany Lean.HashSet.empty all_nodes
@@ -96,19 +70,6 @@ def children (m : Lean.HashMap RocqFile (Lean.HashSet RocqFile)) (n : RocqFile) 
 def is_concrete (n : RocqFile) : Bool := n.type == "v"
 
 def to_concrete (n : RocqFile) : RocqFile := ⟨ n.path, n.type, "v" ⟩
-
--- -- get all downstream dependencies that are real .v files
--- partial def concrete_descendents (m : Lean.HashMap RocqFile (Lean.HashSet RocqFile)) (n : RocqFile) : List RocqFile :=
---   let v :=
---     (children m n).foldl
---       (fun acc c =>
---         if acc.2.contains c then acc else acc
---         -- if is_concrete c
---         --   then acc ++ [c]
---         --   else acc ++ concrete_descendents m c
---         )
---       ([], [])
---   v.1
 
 -- FIXME: Remove IO
 def depgraph.to_graph (g : DepGraph) : IO String := do
@@ -174,13 +135,7 @@ def main (args : List String) : IO Unit := do
     | (some p) => pure p
     | none => throw <| IO.userError "please provide the path of _CoqProject as first argument"
   let g : DepGraph := Lean.HashSet.insertMany Lean.HashSet.empty <| (<- IO.FS.lines path).toList.bind parse_graph
-
-
-
-  -- Simplify g by
-  --    - removing self-edges
-  --    - collapsing all X.* nodes into X
-  --    - if
+  
   let g2 : DepGraph :=
     g.fold (fun acc s =>
       if (s.1.path = s.2.path) && (s.1.name == s.2.name)
@@ -202,27 +157,3 @@ def main (args : List String) : IO Unit := do
 
   -- IO.FS.writeFile "./out.dot" (<- depgraph.to_graph g2)
   IO.println "done"
-
-
-
-
-
-  -- To start, let's just render out the entire graph
-
-  -- for x in g do
-  --   -- IO.println s!"{x.2.path}"
-  --   -- IO.println s!"./iris/{dbg_path x.1}/{x.2}.{x.3}"
-  -- -- IO.println s!"{g.nodes.length}"
-
-  -- IO.println s!"{g.filter (fun d => d.1.type == "v" && d.2.type == "v")}"
-
-  -- There seems to be:
-  -- X.v -> X.vo
-  -- X.v -> X.glob
-  -- X.v -> X.required_vo
-  -- X.v -> X.v
-  -- for all X
-
-  -- X.v -> X.v are the only .v -> .v dependencies, but not all
-
-  -- IO.println s!"done!"
