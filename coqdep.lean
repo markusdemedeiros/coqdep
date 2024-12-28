@@ -128,6 +128,22 @@ def depgraph.to_graph (g : DepGraph) : IO String := do
   return s!"digraph \{\ncompound=true;\noverlap=false;\n{subgraphs}\n{edges}\n}\n"
 
 
+def depgraph.to_graph_single (g : DepGraph) (tgt_path : List String) : IO String := do
+  let n := g.nodes
+  let p := all_paths n
+  let render_subgraph (s : List String) : String :=
+    let content : String := n.fold
+      (fun acc nod => if (nod.1 == s) then s!"{acc}{dbg_node nod}[label=\"{show_node nod}\"];\n" else acc) ""
+    -- s!"subgraph cluster_{dbg_path s} \{\n{dbg_path s}\n{content}}\n"
+    s!"subgraph cluster_{dbg_path s} \{\n{content}}\n"
+  -- let subgraphs : String := p.fold (fun acc s => s!"{acc}{render_subgraph s}") ""
+  let subgraphs : String := render_subgraph tgt_path
+  let render_edge (d : (RocqFile × RocqFile)) : String :=
+    if (d.1.path == d.2.path)
+      then s!"{dbg_node d.1} -> {dbg_node d.2};\n" -- render the within-cluster edges
+      else ""
+  let edges : String := g.fold (fun acc s => s!"{acc}{render_edge s}") ""
+  return s!"digraph \{\ncompound=true;\noverlap=false;\n{subgraphs}\n{edges}\n}\n"
 
 def depgraph.to_overview_graph (g : DepGraph) : IO String := do
   let n := g.nodes
@@ -177,8 +193,8 @@ def main (args : List String) : IO Unit := do
   -- Write out the individual graphs into files
   let g2_nodes := g.nodes
   for i in all_paths g2_nodes do
-    let i_graph := g2.fold (fun acc s => if (s.1.path == i) && (s.2.path == i) then acc.insert s else acc) Lean.HashSet.empty
-    IO.FS.writeFile s!"./dot/{dbg_path i}.dot" (<- depgraph.to_graph i_graph)
+    let i_graph := g2.fold (fun acc s => if (s.1.path == i) || (s.2.path == i) then acc.insert s else acc) Lean.HashSet.empty
+    IO.FS.writeFile s!"./dot/{dbg_path i}.dot" (<- depgraph.to_graph_single i_graph i)
 
   -- Write out the overview graph
   IO.FS.writeFile s!"./dot/overview.dot" (<- depgraph.to_overview_graph g2)
